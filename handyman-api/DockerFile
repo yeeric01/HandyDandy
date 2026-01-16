@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: handyman-postgres
+    environment:
+      POSTGRES_USER: handyman_user
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: handydandy
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./handyman-api/src/main/resources/db/migration:/docker-entrypoint-initdb.d
+
+  backend:
+    build:
+      context: ./handyman-api
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/handydandy
+      SPRING_DATASOURCE_USERNAME: handyman_user
+      SPRING_DATASOURCE_PASSWORD: secret
+    ports:
+      - "8080:8080"
