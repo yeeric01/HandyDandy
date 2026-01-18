@@ -1,52 +1,62 @@
 package com.handydandy.handyman_api.profile;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.handydandy.handyman_api.profile.dto.ProfileCreateRequest;
+import com.handydandy.handyman_api.profile.dto.ProfileResponse;
+import com.handydandy.handyman_api.profile.dto.ProfileUpdateRequest;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/profiles")
+@RequestMapping("/api/v1/profiles")
 public class ProfileController {
 
-    @Autowired
-    private ProfileService profileService;
+    private final ProfileService profileService;
 
-    // Get all profiles
+    public ProfileController(ProfileService profileService) {
+        this.profileService = profileService;
+    }
+
     @GetMapping
-    public List<Profile> getAllProfiles() {
-        return profileService.getAllProfiles();
+    public ResponseEntity<Page<ProfileResponse>> getAllProfiles(
+            @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return ResponseEntity.ok(profileService.getAllProfiles(pageable));
     }
 
-    // Get profile by ID
     @GetMapping("/{id}")
-    public Optional<Profile> getProfileById(@PathVariable UUID id) {
-        return profileService.getProfileById(id);
+    public ResponseEntity<ProfileResponse> getProfileById(@PathVariable UUID id) {
+        return ResponseEntity.ok(profileService.getProfileById(id));
     }
 
-    // Create a new profile
-    @PostMapping
-    public Profile createProfile(@RequestBody Profile profile) {
-        return profileService.createProfile(profile);
-    }
-
-    // Update a profile
-    @PutMapping("/{id}")
-    public Profile updateProfile(@PathVariable UUID id, @RequestBody Profile profile) {
-        return profileService.updateProfile(id, profile);
-    }
-
-    // Delete a profile
-    @DeleteMapping("/{id}")
-    public void deleteProfile(@PathVariable UUID id) {
-        profileService.deleteProfile(id);
-    }
-
-    // Get all handymen
     @GetMapping("/handymen")
-    public List<Profile> getAllHandymen() {
-        return profileService.getAllHandymen();
+    public ResponseEntity<Page<ProfileResponse>> getAllHandymen(
+            @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return ResponseEntity.ok(profileService.getAllHandymen(pageable));
+    }
+
+    @PostMapping
+    public ResponseEntity<ProfileResponse> createProfile(
+            @Valid @RequestBody ProfileCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(profileService.createProfile(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ProfileResponse> updateProfile(
+            @PathVariable UUID id,
+            @Valid @RequestBody ProfileUpdateRequest request) {
+        return ResponseEntity.ok(profileService.updateProfile(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProfile(@PathVariable UUID id) {
+        profileService.deleteProfile(id);
+        return ResponseEntity.noContent().build();
     }
 }

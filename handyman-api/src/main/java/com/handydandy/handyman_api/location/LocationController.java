@@ -1,46 +1,56 @@
 package com.handydandy.handyman_api.location;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.handydandy.handyman_api.location.dto.LocationCreateRequest;
+import com.handydandy.handyman_api.location.dto.LocationResponse;
+import com.handydandy.handyman_api.location.dto.LocationUpdateRequest;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/locations")
+@RequestMapping("/api/v1/locations")
 public class LocationController {
 
-    @Autowired
-    private LocationService locationService;
+    private final LocationService locationService;
 
-    // Get all locations
+    public LocationController(LocationService locationService) {
+        this.locationService = locationService;
+    }
+
     @GetMapping
-    public List<Location> getAllLocations() {
-        return locationService.getAllLocations();
+    public ResponseEntity<Page<LocationResponse>> getAllLocations(
+            @PageableDefault(size = 20, sort = "city") Pageable pageable) {
+        return ResponseEntity.ok(locationService.getAllLocations(pageable));
     }
 
-    // Get location by ID
     @GetMapping("/{id}")
-    public Optional<Location> getLocationById(@PathVariable UUID id) {
-        return locationService.getLocationById(id);
+    public ResponseEntity<LocationResponse> getLocationById(@PathVariable UUID id) {
+        return ResponseEntity.ok(locationService.getLocationById(id));
     }
 
-    // Create a new location
     @PostMapping
-    public Location createLocation(@RequestBody Location location) {
-        return locationService.createLocation(location);
+    public ResponseEntity<LocationResponse> createLocation(
+            @Valid @RequestBody LocationCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(locationService.createLocation(request));
     }
 
-    // Update a location
     @PutMapping("/{id}")
-    public Location updateLocation(@PathVariable UUID id, @RequestBody Location location) {
-        return locationService.updateLocation(id, location);
+    public ResponseEntity<LocationResponse> updateLocation(
+            @PathVariable UUID id,
+            @Valid @RequestBody LocationUpdateRequest request) {
+        return ResponseEntity.ok(locationService.updateLocation(id, request));
     }
 
-    // Delete a location
     @DeleteMapping("/{id}")
-    public void deleteLocation(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteLocation(@PathVariable UUID id) {
         locationService.deleteLocation(id);
+        return ResponseEntity.noContent().build();
     }
 }

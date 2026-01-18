@@ -1,50 +1,63 @@
 package com.handydandy.handyman_api.location;
 
+import com.handydandy.handyman_api.exception.ResourceNotFoundException;
+import com.handydandy.handyman_api.location.dto.LocationCreateRequest;
+import com.handydandy.handyman_api.location.dto.LocationResponse;
+import com.handydandy.handyman_api.location.dto.LocationUpdateRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Transactional
 public class LocationService {
 
     private final LocationRepository locationRepository;
+    private final LocationMapper mapper;
 
-    public LocationService(LocationRepository locationRepository) {
+    public LocationService(LocationRepository locationRepository, LocationMapper mapper) {
         this.locationRepository = locationRepository;
+        this.mapper = mapper;
     }
 
-    // Create a new location
-    public Location createLocation(Location location) {
-        return locationRepository.save(location);
+    public LocationResponse createLocation(LocationCreateRequest request) {
+        Location location = mapper.toEntity(request);
+        return mapper.toResponse(locationRepository.save(location));
     }
 
-    // Get all locations
-    public List<Location> getAllLocations() {
-        return locationRepository.findAll();
+    @Transactional(readOnly = true)
+    public Page<LocationResponse> getAllLocations(Pageable pageable) {
+        return locationRepository.findAll(pageable).map(mapper::toResponse);
     }
 
-    // Get location by ID
-    public Optional<Location> getLocationById(UUID id) {
-        return locationRepository.findById(id);
+    @Transactional(readOnly = true)
+    public LocationResponse getLocationById(UUID id) {
+        Location location = locationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Location", "id", id));
+        return mapper.toResponse(location);
     }
 
-    // Update location
-    public Location updateLocation(UUID id, Location updatedLocation) {
-        return locationRepository.findById(id).map(location -> {
-            location.setCity(updatedLocation.getCity());
-            location.setState(updatedLocation.getState());
-            location.setZip(updatedLocation.getZip());
-            return locationRepository.save(location);
-        }).orElse(null);
+    public LocationResponse updateLocation(UUID id, LocationUpdateRequest request) {
+        Location location = locationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Location", "id", id));
+        mapper.updateEntity(location, request);
+        return mapper.toResponse(locationRepository.save(location));
     }
 
-    // Delete location
-    public boolean deleteLocation(UUID id) {
-        return locationRepository.findById(id).map(location -> {
-            locationRepository.delete(location);
-            return true;
-        }).orElse(false);
+    public void deleteLocation(UUID id) {
+        if (!locationRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Location", "id", id);
+        }
+        locationRepository.deleteById(id);
+    }
+
+    // Internal method to get entity (for other services)
+    @Transactional(readOnly = true)
+    public Location getEntityById(UUID id) {
+        return locationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Location", "id", id));
     }
 }

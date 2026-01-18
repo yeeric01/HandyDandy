@@ -1,17 +1,17 @@
-import React from "react";
-import { Users } from "./components/Users";
-import { Profile } from "./components/Profile";
-//import { Locations } from "./components/Locations";
-//import { ServiceRequests } from "./components/ServiceRequests";
+import { Routes, Route } from "react-router-dom";
+import { MainLayout } from "@/layouts";
+import { Dashboard, Bookings, Categories, Handymen, Customers } from "@/pages";
 
-const App: React.FC = () => {
+export default function App() {
   return (
-    <div>
-      <h1>Handyman Dashboard</h1>
-      {/* <Locations /> */}
-      {/*<ServiceRequests /> */}
-    </div>
+    <Routes>
+      <Route path="/" element={<MainLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="bookings" element={<Bookings />} />
+        <Route path="categories" element={<Categories />} />
+        <Route path="handymen" element={<Handymen />} />
+        <Route path="customers" element={<Customers />} />
+      </Route>
+    </Routes>
   );
-};
-
-export default App;
+}

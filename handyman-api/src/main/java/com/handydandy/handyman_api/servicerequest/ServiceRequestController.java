@@ -1,54 +1,84 @@
 package com.handydandy.handyman_api.servicerequest;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.handydandy.handyman_api.servicerequest.dto.ServiceRequestCreateRequest;
+import com.handydandy.handyman_api.servicerequest.dto.ServiceRequestResponse;
+import com.handydandy.handyman_api.servicerequest.dto.ServiceRequestUpdateRequest;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.handydandy.handyman_api.profile.Profile;
-
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/service-requests")
+@RequestMapping("/api/v1/service-requests")
 public class ServiceRequestController {
 
-    @Autowired
-    private ServiceRequestService serviceRequestService;
+    private final ServiceRequestService serviceRequestService;
 
-    // Get all requests
+    public ServiceRequestController(ServiceRequestService serviceRequestService) {
+        this.serviceRequestService = serviceRequestService;
+    }
+
     @GetMapping
-    public List<ServiceRequest> getAllRequests() {
-        return serviceRequestService.getAllRequests();
+    public ResponseEntity<Page<ServiceRequestResponse>> getAllRequests(
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(serviceRequestService.getAllRequests(pageable));
     }
 
-    // Get request by ID
     @GetMapping("/{id}")
-    public Optional<ServiceRequest> getRequestById(@PathVariable UUID id) {
-        return serviceRequestService.getRequestById(id);
+    public ResponseEntity<ServiceRequestResponse> getRequestById(@PathVariable UUID id) {
+        return ResponseEntity.ok(serviceRequestService.getRequestById(id));
     }
 
-    // Create a new request
+    @GetMapping("/customer/{customerId}")
+    public ResponseEntity<Page<ServiceRequestResponse>> getRequestsByCustomer(
+            @PathVariable UUID customerId,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(serviceRequestService.getRequestsByCustomer(customerId, pageable));
+    }
+
+    @GetMapping("/handyman/{handymanId}")
+    public ResponseEntity<Page<ServiceRequestResponse>> getRequestsByHandyman(
+            @PathVariable UUID handymanId,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(serviceRequestService.getRequestsByHandyman(handymanId, pageable));
+    }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<Page<ServiceRequestResponse>> getRequestsByStatus(
+            @PathVariable String status,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(serviceRequestService.getRequestsByStatus(status, pageable));
+    }
+
     @PostMapping
-    public ServiceRequest createRequest(@RequestBody ServiceRequest request) {
-        return serviceRequestService.createRequest(request);
+    public ResponseEntity<ServiceRequestResponse> createRequest(
+            @Valid @RequestBody ServiceRequestCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(serviceRequestService.createRequest(request));
     }
 
-    // Update a request
     @PutMapping("/{id}")
-    public ServiceRequest updateRequest(@PathVariable UUID id, @RequestBody ServiceRequest request) {
-        return serviceRequestService.updateRequest(id, request);
+    public ResponseEntity<ServiceRequestResponse> updateRequest(
+            @PathVariable UUID id,
+            @Valid @RequestBody ServiceRequestUpdateRequest request) {
+        return ResponseEntity.ok(serviceRequestService.updateRequest(id, request));
     }
 
-    // Delete a request
+    @PostMapping("/{id}/assign/{handymanId}")
+    public ResponseEntity<ServiceRequestResponse> assignHandyman(
+            @PathVariable UUID id,
+            @PathVariable UUID handymanId) {
+        return ResponseEntity.ok(serviceRequestService.assignHandyman(id, handymanId));
+    }
+
     @DeleteMapping("/{id}")
-    public void deleteRequest(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteRequest(@PathVariable UUID id) {
         serviceRequestService.deleteRequest(id);
-    }
-
-    // Assign handyman to a request
-    @PostMapping("/{id}/assign")
-    public ServiceRequest assignHandyman(@PathVariable UUID id, @RequestBody Profile handyman) {
-        return serviceRequestService.assignHandyman(id, handyman);
+        return ResponseEntity.noContent().build();
     }
 }

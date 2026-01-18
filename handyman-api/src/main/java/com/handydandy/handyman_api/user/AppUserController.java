@@ -1,52 +1,61 @@
 package com.handydandy.handyman_api.user;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.handydandy.handyman_api.user.dto.AppUserCreateRequest;
+import com.handydandy.handyman_api.user.dto.AppUserResponse;
+import com.handydandy.handyman_api.user.dto.AppUserUpdateRequest;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/app-users")
+@RequestMapping("/api/v1/users")
 public class AppUserController {
 
-    @Autowired
-    private AppUserService userService;
+    private final AppUserService userService;
 
-    // Get all users
+    public AppUserController(AppUserService userService) {
+        this.userService = userService;
+    }
+
     @GetMapping
-    public List<AppUser> getAllUsers() {
-        return userService.getAllUsers();
+    public ResponseEntity<Page<AppUserResponse>> getAllUsers(
+            @PageableDefault(size = 20, sort = "email") Pageable pageable) {
+        return ResponseEntity.ok(userService.getAllUsers(pageable));
     }
 
-    // Get user by ID
     @GetMapping("/{id}")
-    public Optional<AppUser> getUserById(@PathVariable UUID id) {
-        return userService.getUserById(id);
+    public ResponseEntity<AppUserResponse> getUserById(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getUserById(id));
     }
 
-    // Create a new user
-    @PostMapping
-    public AppUser createUser(@RequestBody AppUser user) {
-        return userService.createUser(user);
-    }
-
-    // Update a user
-    @PutMapping("/{id}")
-    public AppUser updateUser(@PathVariable UUID id, @RequestBody AppUser user) {
-        return userService.updateUser(id, user);
-    }
-
-    // Delete a user
-    @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable UUID id) {
-        userService.deleteUser(id);
-    }
-
-    // Optional: get user by email
     @GetMapping("/by-email")
-    public Optional<AppUser> getUserByEmail(@RequestParam String email) {
-        return userService.getUserByEmail(email);
+    public ResponseEntity<AppUserResponse> getUserByEmail(@RequestParam String email) {
+        return ResponseEntity.ok(userService.getUserByEmail(email));
+    }
+
+    @PostMapping
+    public ResponseEntity<AppUserResponse> createUser(
+            @Valid @RequestBody AppUserCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(userService.createUser(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<AppUserResponse> updateUser(
+            @PathVariable UUID id,
+            @Valid @RequestBody AppUserUpdateRequest request) {
+        return ResponseEntity.ok(userService.updateUser(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }

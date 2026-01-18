@@ -1,5 +1,7 @@
 package com.handydandy.handyman_api.servicerequest;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -9,12 +11,15 @@ import java.util.UUID;
 @Repository
 public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, UUID> {
 
-    // Get all requests for a customer
     List<ServiceRequest> findByCustomerId(UUID customerId);
 
-    // Get all requests for a handyman
+    Page<ServiceRequest> findByCustomerId(UUID customerId, Pageable pageable);
+
     List<ServiceRequest> findByHandymanId(UUID handymanId);
 
-    // Optional: find requests by status
+    Page<ServiceRequest> findByHandymanId(UUID handymanId, Pageable pageable);
+
     List<ServiceRequest> findByStatus(ServiceRequest.Status status);
+
+    Page<ServiceRequest> findByStatus(ServiceRequest.Status status, Pageable pageable);
 }

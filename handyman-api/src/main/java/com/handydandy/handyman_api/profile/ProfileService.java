@@ -1,57 +1,106 @@
 package com.handydandy.handyman_api.profile;
 
+import com.handydandy.handyman_api.exception.DuplicateResourceException;
+import com.handydandy.handyman_api.exception.ResourceNotFoundException;
+import com.handydandy.handyman_api.location.Location;
+import com.handydandy.handyman_api.location.LocationRepository;
+import com.handydandy.handyman_api.profile.dto.ProfileCreateRequest;
+import com.handydandy.handyman_api.profile.dto.ProfileResponse;
+import com.handydandy.handyman_api.profile.dto.ProfileUpdateRequest;
+import com.handydandy.handyman_api.user.AppUser;
+import com.handydandy.handyman_api.user.AppUserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Transactional
 public class ProfileService {
 
     private final ProfileRepository profileRepository;
+    private final AppUserRepository userRepository;
+    private final LocationRepository locationRepository;
+    private final ProfileMapper mapper;
 
-    public ProfileService(ProfileRepository profileRepository) {
+    public ProfileService(ProfileRepository profileRepository,
+                          AppUserRepository userRepository,
+                          LocationRepository locationRepository,
+                          ProfileMapper mapper) {
         this.profileRepository = profileRepository;
+        this.userRepository = userRepository;
+        this.locationRepository = locationRepository;
+        this.mapper = mapper;
     }
 
-    // Create a new profile
-    public Profile createProfile(Profile profile) {
-        return profileRepository.save(profile);
+    public ProfileResponse createProfile(ProfileCreateRequest request) {
+        if (profileRepository.findByEmail(request.email()).isPresent()) {
+            throw new DuplicateResourceException("Profile with email '" + request.email() + "' already exists");
+        }
+
+        AppUser user = userRepository.findById(request.userId())
+            .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.userId()));
+
+        Location location = null;
+        if (request.locationId() != null) {
+            location = locationRepository.findById(request.locationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Location", "id", request.locationId()));
+        }
+
+        Profile profile = mapper.toEntity(request, user, location);
+        return mapper.toResponse(profileRepository.save(profile));
     }
 
-    // Get all profiles
-    public List<Profile> getAllProfiles() {
-        return profileRepository.findAll();
+    @Transactional(readOnly = true)
+    public Page<ProfileResponse> getAllProfiles(Pageable pageable) {
+        return profileRepository.findAll(pageable).map(mapper::toResponse);
     }
 
-    // Get profile by ID
-    public Optional<Profile> getProfileById(UUID id) {
-        return profileRepository.findById(id);
+    @Transactional(readOnly = true)
+    public ProfileResponse getProfileById(UUID id) {
+        Profile profile = profileRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
+        return mapper.toResponse(profile);
     }
 
-    // Update profile
-    public Profile updateProfile(UUID id, Profile updatedProfile) {
-        return profileRepository.findById(id).map(profile -> {
-            profile.setName(updatedProfile.getName());
-            profile.setLocation(updatedProfile.getLocation());
-            profile.setUser(updatedProfile.getUser());
-            return profileRepository.save(profile);
-        }).orElse(null);
+    public ProfileResponse updateProfile(UUID id, ProfileUpdateRequest request) {
+        Profile profile = profileRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
+
+        if (request.email() != null && !request.email().equals(profile.getEmail())) {
+            if (profileRepository.findByEmail(request.email()).isPresent()) {
+                throw new DuplicateResourceException("Profile with email '" + request.email() + "' already exists");
+            }
+        }
+
+        Location location = null;
+        if (request.locationId() != null) {
+            location = locationRepository.findById(request.locationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Location", "id", request.locationId()));
+        }
+
+        mapper.updateEntity(profile, request, location);
+        return mapper.toResponse(profileRepository.save(profile));
     }
 
-    // Delete profile
-    public boolean deleteProfile(UUID id) {
-        return profileRepository.findById(id).map(profile -> {
-            profileRepository.delete(profile);
-            return true;
-        }).orElse(false);
+    public void deleteProfile(UUID id) {
+        if (!profileRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Profile", "id", id);
+        }
+        profileRepository.deleteById(id);
     }
 
-    // Get all handymen (assuming user role HANDYMAN)
-    public List<Profile> getAllHandymen() {
-        return profileRepository.findAll().stream()
-                .filter(profile -> profile.getUser().getRole() == com.handydandy.handyman_api.user.AppUser.Role.HANDYMAN)
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<ProfileResponse> getAllHandymen(Pageable pageable) {
+        return profileRepository.findByRole("HANDYMAN", pageable).map(mapper::toResponse);
+    }
+
+    // Internal method to get entity (for other services)
+    @Transactional(readOnly = true)
+    public Profile getEntityById(UUID id) {
+        return profileRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
     }
 }
